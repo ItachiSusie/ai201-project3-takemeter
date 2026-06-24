@@ -1,0 +1,384 @@
+================================================================================
+  AI201 PROJECT 3 — TAKEMETER: COMPLETE PROJECT PLAN
+  Repository: ai201-project3-takemeter
+================================================================================
+
+OVERVIEW
+--------
+Build TakeMeter: a fine-tuned text classifier that evaluates discourse quality
+in an online community. Define 2–4 labels, collect/annotate 200+ examples,
+fine-tune distilbert-base-uncased, compare to a Groq zero-shot baseline, and
+produce a full evaluation report.
+
+Estimated total time: ~9–11 hours
+Submission: GitHub repo link + demo video via Course Portal
+
+================================================================================
+MILESTONE 1 — Choose Community and Define Labels (~45 min)
+================================================================================
+
+GOAL: Lock in your community and label taxonomy before touching any data.
+
+STEPS:
+
+1. Choose a community.
+   - Pick one active, text-heavy, publicly accessible online community.
+   - Recommended: r/nba, r/soccer, r/LetsTalkMusic, r/television, r/leagueoflegends.
+   - Requirement: you must be able to collect at least 200 public posts/comments.
+
+2. Read 30–40 real posts BEFORE designing labels.
+   - Do not design labels from memory. Read the actual text first.
+   - Ask: what makes some posts more substantive than others here?
+
+3. Design 2–4 labels. For each label, document:
+   a. One-sentence definition (precise and community-grounded)
+   b. 2 clear example posts that belong to it
+   c. 1 uncertain/borderline post for that label
+   Requirements for the label set:
+   - Mutually exclusive: every post belongs to exactly one label
+   - Exhaustive: can label at least 90% of posts without an "other" bucket
+   - Grounded: distinctions matter to actual community members
+
+4. Check for overlaps. If two labels can apply to the same post, tighten the
+   boundary or write an explicit decision rule for that ambiguous case.
+
+5. Write the edge case decision rule:
+   - Pick one post that could belong to two labels.
+   - Write the rule you will use to resolve it every time.
+   - This is your most important pre-annotation design work.
+
+6. Write a 2–3 sentence summary: community, labels, and why the distinctions
+   matter. Paste this into milestone1plan.txt.
+
+CHECKPOINT (do not proceed until you can answer YES to all):
+[ ] I can state my 2–4 labels with one-sentence definitions and 2 examples each
+[ ] I can name the hardest anticipated edge case and my decision rule for it
+[ ] No two labels overlap to the point where 1 post could reasonably fit both
+[ ] At least 90% of posts I've read so far can be cleanly labeled
+
+================================================================================
+MILESTONE 2 — Write planning.md (~45 min)
+================================================================================
+
+GOAL: Document your full design spec BEFORE collecting any labeled data.
+
+STEPS:
+
+1. Create planning.md in the repo root. Design the structure yourself.
+   Must substantively answer all six questions below (not placeholders):
+
+   a. Community: What community did you choose and why? What makes the
+      discourse varied enough to be interesting for classification?
+
+   b. Labels: What are your 2–4 labels? Full definition per label.
+      Include 2 concrete example posts per label.
+
+   c. Hard edge cases: What type of post sits genuinely between two labels?
+      Write your decision rule for handling it during annotation.
+
+   d. Data collection plan: Where will you collect examples? How many per
+      label? What will you do if a label is underrepresented after 200 examples?
+
+   e. Evaluation metrics: Which metrics beyond accuracy will you use and why?
+      Explain what precision/recall/F1 tell you that accuracy alone cannot.
+
+   f. Definition of success: What specific performance threshold makes this
+      classifier genuinely useful? (Give a number, e.g., "F1 ≥ 0.70 per class")
+
+2. Add an "AI Tool Plan" section to planning.md covering:
+   a. Label stress-testing: Give AI your label definitions; ask it to generate
+      5–10 boundary posts. If you can't classify them, tighten definitions.
+   b. Annotation assistance: Will you use an LLM to pre-label before reviewing?
+      If yes: which tool, and how will you track pre-labeled examples?
+   c. Failure analysis: Plan to give misclassified examples to an AI tool and
+      ask it to identify patterns. Note what you'll look for.
+
+3. Commit planning.md to GitHub.
+
+CHECKPOINT:
+[ ] planning.md answers all six required questions with specific answers
+[ ] Label definitions are precise enough that two people would agree on most posts
+[ ] Success criteria include a specific numeric performance threshold
+[ ] AI Tool Plan section covers label stress-testing, annotation assistance,
+    and failure analysis (even if you plan to skip some — explicit decision)
+
+================================================================================
+MILESTONE 3 — Collect and Annotate Dataset (~3–4 hours)
+================================================================================
+
+GOAL: Produce a clean, single labeled CSV with at least 200 examples.
+
+STEPS:
+
+1. Collect at least 200 posts/comments from your chosen community.
+   - Use PUBLIC posts only (no private channels or auth-gated content).
+   - Manual copy-paste is fine; scraping optional but don't over-engineer it.
+   - Aim for roughly equal distribution across your labels (≥20% each label).
+
+2. Save to a CSV file. Required columns:
+   - text  (the post or comment text)
+   - label (your string label)
+   - notes (optional — hard cases, borderline decisions)
+   Save as ONE complete labeled file (not pre-split). The Colab notebook
+   handles the 70% / 15% / 15% train/val/test split automatically.
+
+3. (Optional) Use an LLM to pre-label a batch first:
+   - Provide label definitions from planning.md + unlabeled posts.
+   - You MUST review and correct EVERY pre-assigned label — no skimming.
+   - Disclose this in your AI usage section if you do it.
+
+4. Label each example using your definitions. Read each post individually.
+   Keep a running list of cases that gave you pause (what it was, which labels
+   it could belong to, what you decided).
+
+5. After labeling, check label distribution:
+   - If any label > 70% of total → collect more underrepresented examples
+   - If any label < 20% of total → collect more for that label
+
+6. Document at least 3 difficult annotation decisions in planning.md
+   (Hard Edge Cases section).
+
+7. Commit the CSV to your GitHub repo.
+
+CHECKPOINT:
+[ ] At least 200 labeled examples in one CSV (text, label columns)
+[ ] No single label accounts for more than 70% of examples
+[ ] At least 3 difficult annotation decisions documented in planning.md
+[ ] CSV committed to GitHub repo
+
+================================================================================
+MILESTONE 4 — Run Baseline (~1 hour)
+================================================================================
+
+GOAL: Establish zero-shot Groq baseline on the locked test set BEFORE fine-tuning.
+
+STEPS:
+
+1. Open your copy of the TakeMeter starter Colab notebook.
+   Set runtime to T4 GPU (Runtime → Change runtime type → T4 GPU → Save).
+
+2. Run Section 1: Define label map and upload your labeled CSV.
+   (Notebook prompts you to upload — no manual Google Drive placement needed.)
+
+3. Run Section 2: The notebook splits data (70/15/15) and tokenizes all splits.
+   Review split sizes and label distribution to confirm they look reasonable.
+
+4. Run Section 5 (baseline):
+   - Add your Groq API key via Colab Secrets (key name: GROQ_API_KEY).
+     NEVER paste or commit your API key directly into the notebook or repo.
+   - Write your classification prompt using your label definitions from
+     planning.md. Instruct the model to output ONLY the label name.
+   - Run all baseline cells. Notebook classifies the entire test set and prints
+     overall accuracy + per-class metrics.
+   - If >10% of responses are unparseable, revise prompt for cleaner output.
+
+5. Save baseline results (overall accuracy + per-class metrics).
+   Write a brief hypothesis: where did the baseline struggle and why?
+
+CHECKPOINT:
+[ ] Baseline accuracy and per-class metrics recorded
+[ ] Test set has NOT been used for training (you have not fine-tuned yet)
+[ ] API key was added via Colab Secrets, not hardcoded
+[ ] Brief hypothesis written about where baseline struggled
+
+================================================================================
+MILESTONE 5 — Fine-Tune Your Model (~1.5–2 hours)
+================================================================================
+
+GOAL: Fine-tune distilbert-base-uncased and evaluate vs. baseline.
+
+STEPS:
+
+1. IMPORTANT: If Colab runtime reset since Milestone 4, re-upload CSV and
+   re-run Sections 1, 2, and 5 before continuing. Section 6 needs baseline
+   numbers from Section 5.
+
+2. Run Section 3: Fine-tune distilbert-base-uncased.
+   - Default: 3 epochs, learning rate 2e-5, batch size 16
+   - Training takes 5–15 min on T4 GPU
+   - If you change any hyperparameters, write down what and why (for README)
+
+3. Run Section 4: Evaluate fine-tuned model on test set.
+   - Outputs: per-class precision/recall/F1, confusion matrix image
+     (confusion_matrix.png)
+   - Review wrong predictions; pick 3 to analyze in depth
+
+4. Run Section 6: Side-by-side baseline vs. fine-tuned comparison.
+   - Outputs evaluation_results.json
+
+5. Download from Colab (Files panel → right-click → Download):
+   - evaluation_results.json
+   - confusion_matrix.png
+
+6. Commit both files to your GitHub repo.
+
+7. If fine-tuned model performs WORSE than baseline across the board:
+   Investigate before writing the report. Check for:
+   - Label leakage (test data in training)
+   - Severe class imbalance
+   - Training bug (wrong label map, mismatched splits)
+
+CHECKPOINT:
+[ ] Fine-tuning completed without error
+[ ] evaluation_results.json and confusion_matrix.png downloaded and committed
+[ ] Fine-tuned model's test-set metrics recorded
+[ ] At least 3 wrong predictions identified for analysis
+
+================================================================================
+MILESTONE 6 — Evaluate, Document, and Record (~1–2 hours)
+================================================================================
+
+GOAL: Write README evaluation report, complete all repo files, record demo video.
+
+STEPS:
+
+1. Use an AI tool to surface patterns in your wrong predictions BEFORE writing:
+   - Paste misclassified examples into Claude/ChatGPT
+   - Ask it to identify common themes (length, sarcasm, label pair confusion, etc.)
+   - Verify patterns yourself by re-reading examples
+   - Include what you found AND what you had to correct/discard
+
+2. Write README.md. Required sections:
+
+   a. Community choice and reasoning
+   b. Label taxonomy: full definition + 2 examples per label
+   c. Data collection: source, labeling process, label distribution table
+      (count per label), and 3 difficult-to-label examples with your decisions
+   d. Fine-tuning approach: base model, training setup, at least ONE
+      hyperparameter decision (what you changed and why, or why you kept defaults)
+   e. Baseline description: exact prompt used and how results were collected
+   f. Evaluation report (full section):
+      - Overall accuracy for BOTH models
+      - Per-class precision, recall, F1 for BOTH models
+      - Confusion matrix written as a markdown table directly in the README
+        (NOT only the committed confusion_matrix.png — the text version must
+         be readable in the README)
+      - At least 3 specific wrong predictions with analysis per these questions:
+          * Which label pair is being confused?
+          * Why is that boundary hard? (ambiguity, sarcasm, short posts, etc.)
+          * Is this a labeling problem or a data/boundary problem?
+          * What would need to change to fix it?
+      - Sample Classifications subsection: markdown table of 3–5 posts run
+        through the fine-tuned model, each showing post text, predicted label,
+        and confidence score. For at least one CORRECT prediction, write a
+        sentence explaining why the prediction is reasonable.
+   g. Reflection: what the model learned vs. what you intended it to learn
+      (high-level gap between your labels and the model's actual decision
+       boundary — not just a list of wrong predictions)
+   h. Spec reflection: one way the spec helped guide implementation, and one
+      way your implementation diverged from the spec and why
+   i. AI usage section: at least 2 specific instances describing:
+      - What you directed the AI tool to do
+      - What it produced
+      - What you changed or overrode
+      Disclose any annotation assistance (pre-labeling with LLM)
+
+3. Verify planning.md is complete and up to date:
+   - Hard edge cases section includes 3+ annotation decisions from Milestone 3
+   - AI Tool Plan section reflects what you actually did
+   - Update it if you did any stretch features
+
+4. Record a 3–5 minute demo video showing:
+   - 3–5 posts being classified by your fine-tuned model (label + confidence visible)
+   - ONE correct prediction: narrate why the prediction is reasonable
+   - ONE incorrect prediction: narrate what went wrong
+   - Brief walkthrough of your evaluation report in the README
+
+5. Upload video to YouTube/Google Drive/Loom (wherever accepted by the portal).
+
+CHECKPOINT:
+[ ] README.md covers ALL required sections above
+[ ] Confusion matrix is written as a markdown table in the README (not only image)
+[ ] Sample Classifications table is written as text (not screenshot)
+[ ] Reflection addresses the gap between intended and learned behavior specifically
+[ ] Spec reflection covers one way spec helped + one way you diverged
+[ ] AI usage section covers at least 2 specific instances
+[ ] Demo video is 3–5 min and shows all required moments
+[ ] planning.md is final and committed
+
+================================================================================
+GITHUB REPOSITORY CHECKLIST — Files to Commit
+================================================================================
+
+Required files in repo:
+[ ] planning.md          — design thinking, label definitions, edge cases, AI plan
+[ ] README.md            — full polished report (see Milestone 6 for all sections)
+[ ] data/[filename].csv  — labeled dataset (text + label columns, NOT pre-split)
+[ ] evaluation_results.json   — downloaded from Colab Section 6
+[ ] confusion_matrix.png      — downloaded from Colab Section 4
+
+NOT in repo (keep secret):
+[ ] Groq API key — use Colab Secrets only, never commit
+
+================================================================================
+SUBMISSION CHECKLIST
+================================================================================
+
+Submit via Course Portal:
+[ ] GitHub repository link
+[ ] planning.md in repo root
+[ ] Labeled dataset CSV in repo (or linked from README)
+[ ] README.md with ALL sections:
+    [ ] Community choice and reasoning
+    [ ] Label taxonomy (definitions + 2 examples per label)
+    [ ] Data collection source, labeling process, label distribution,
+        3 difficult-to-label examples with decisions
+    [ ] Fine-tuning approach (base model, training setup, 1 hyperparameter decision)
+    [ ] Baseline description (prompt used + how results collected)
+    [ ] Full evaluation report:
+        [ ] Accuracy for both models
+        [ ] Per-class metrics for both models
+        [ ] Confusion matrix as markdown table in README
+        [ ] 3 specific wrong predictions with deep analysis
+        [ ] Sample classifications table (3–5 posts, label, confidence)
+    [ ] Reflection (learned vs. intended behavior)
+    [ ] Spec reflection (one way helped, one way diverged)
+    [ ] AI usage section (2+ specific instances, annotation disclosure)
+[ ] Demo video (3–5 min):
+    [ ] 3–5 posts classified with label + confidence visible
+    [ ] 1 correct prediction narrated
+    [ ] 1 incorrect prediction narrated
+    [ ] Brief evaluation report walkthrough
+
+================================================================================
+STRETCH FEATURES (optional, for extra credit)
+================================================================================
+
+Update planning.md BEFORE starting any stretch feature.
+
+A. Inter-annotator reliability
+   - Have 1+ other person label 30+ examples independently
+   - Report agreement rate (Cohen's kappa or % agreement)
+   - Analyze where you disagreed
+
+B. Confidence calibration
+   - Report whether confidence scores are meaningful:
+     do 90%-confident predictions get it right more than 60%-confident ones?
+
+C. Error pattern analysis
+   - Go beyond individual wrong predictions — identify a SYSTEMATIC pattern
+     (e.g., "model consistently misclassifies sarcastic posts")
+
+D. Deployed interface
+   - Build a simple interface: accepts a post → runs classifier → shows label + confidence
+   - Commit interface code to repo
+   - Document how to run it in README
+
+================================================================================
+KEY REMINDERS
+================================================================================
+
+- Label design is the most important decision. If labels are vague, the model
+  learns something vague. Spend more time here than you think you need to.
+- Aim for at least 20% per label. A dominant label (>70%) = a majority-class model.
+- The baseline comparison is not a formality. Run it honestly.
+- Wrong predictions are your most valuable data. Analyze them deeply.
+- If accuracy >95% on a hard subjective task: check for test set leakage or
+  labels that are too easy.
+- NEVER commit your Groq API key. Use Colab Secrets only.
+- The confusion matrix MUST appear as a markdown table in the README (not only
+  the .png). Graders read the README — the image is supplementary.
+
+================================================================================
+END OF PROJECT PLAN
+================================================================================
