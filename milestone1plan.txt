@@ -1,0 +1,112 @@
+MILESTONE 1 — COMMUNITY AND LABEL TAXONOMY
+===========================================
+
+Community: r/nba (Reddit NBA basketball discussion community)
+-----------------------------------------------------------------
+r/nba is one of Reddit's most active sports communities (~10M members), where
+users debate player rankings, game performances, team decisions, and the
+league's direction. The community self-polices discourse quality strongly —
+members distinguish between posts that make genuine arguments and posts that
+are emotional reactions or unsupported claims. This makes it an ideal community
+for a discourse-quality classifier: the distinctions are real and culturally
+meaningful inside the community.
+
+Label Taxonomy: 3 Labels
+-----------------------------------------------------------------
+
+LABEL 1: analysis
+Definition: A post that makes a structured argument backed by statistics,
+historical comparisons, contextual data, or tactical/strategic reasoning.
+Evidence is specific and verifiable; the post reasons toward a conclusion
+rather than just asserting it.
+
+Example 1:
+"Luka's efficiency on pull-up threes this postseason (.412 3P%) puts him in
+rare company — only Steph Curry and Dirk have posted higher rates in a single
+playoff run with 5+ attempts per game. His step-back geometry is fundamentally
+different: he releases at a higher apex, meaning defenders closing out get less
+contest window. This isn't just hot — it's reproducible."
+
+Example 2:
+"People are sleeping on how much the Celtics' switch-everything scheme depends
+on having a 7-footer who can guard guards. When Porzingis is off the floor,
+their defensive rating drops from 107 to 119. The system doesn't work without
+him — which is exactly why the Pacers targeted him with off-ball screens in Q4."
+
+Borderline case for analysis:
+"Kawhi's career playoff TS% is higher than LeBron's. That has to count for
+something." — Cites a real stat but uses it to assert superiority without
+deeper context. → Classified as HOT_TAKE (stat is cherry-picked for effect,
+not as part of a reasoned argument. See decision rule below.)
+
+---
+
+LABEL 2: hot_take
+Definition: A bold, confident opinion stated without supporting evidence, or
+with evidence that is cherry-picked or decorative rather than genuinely
+argumentative. The post asserts a strong claim; it does not build toward it.
+
+Example 1:
+"LeBron is the most overrated player in NBA history. His ring count only
+happened because he had elite help every single time. Jordan would have 10
+rings in LeBron's era."
+
+Example 2:
+"The NBA is soft now. Players take days off for 'load management' and nobody
+calls it what it is — they're just scared of competing. The 90s players would
+have laughed at this."
+
+Borderline case for hot_take:
+"Tatum is better than Luka right now — he's on a championship team and Luka
+keeps losing in the first round." — Opinionated framing, points to a result as
+implicit evidence. → Classified as HOT_TAKE (the evidence is a win/loss record
+used rhetorically, not a reasoned performance argument).
+
+---
+
+LABEL 3: reaction
+Definition: An immediate emotional response to a specific, recent game event,
+play, or moment. Little or no argument — the post is expressing a feeling or
+sharing a sentiment about something that just happened. Often short.
+
+Example 1:
+"THAT DUNK BY ANT OMFG HE JUST PUT THE WHOLE LEAGUE ON NOTICE"
+
+Example 2:
+"Can't believe we let that lead slip. This team breaks my heart every single
+year. I'm done."
+
+Borderline case for reaction:
+"Steph just hit his 4th three of the half. At what point do teams stop leaving
+him open? This is inexcusable coaching." — Reacts to a live event but adds a
+light tactical critique. → Classified as REACTION (the comment is situational
+and emotional; the 'critique' is not developed into an argument).
+
+---
+
+Edge Case Decision Rule: analysis vs. hot_take
+------------------------------------------------
+If a post provides specific, verifiable evidence that would support its claim
+even if you stripped out the opinion framing → label it ANALYSIS.
+If the evidence is vague, cherry-picked, or just enough to sound credible but
+the post doesn't reason through it → label it HOT_TAKE.
+When in doubt: if the post's main payload is the claim (not the reasoning),
+it's a HOT_TAKE.
+
+Edge Case Decision Rule: reaction vs. hot_take
+------------------------------------------------
+REACTION posts are anchored to a specific event that just happened (a game,
+a play, a trade announced moments ago). HOT_TAKE posts make general claims
+about players, teams, or the league that aren't tied to a single moment.
+If you could post it in a vacuum without referencing a specific event → HOT_TAKE.
+If it requires the context of "this just happened" to make sense → REACTION.
+
+---
+Community Summary (for planning.md):
+r/nba is a text-heavy, opinion-rich community where discourse quality is
+culturally meaningful — members actively distinguish analysis from noise.
+The three-label taxonomy (analysis / hot_take / reaction) captures a
+distinction that r/nba participants recognize and care about: whether a post
+advances the conversation or merely expresses a feeling or a bold unsubstantiated
+claim. These labels are mutually exclusive (grounded in evidence and framing
+rather than topic) and cover at least 95% of subreddit posts cleanly.
