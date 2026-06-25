@@ -1,112 +1,384 @@
-MILESTONE 1 — COMMUNITY AND LABEL TAXONOMY
-===========================================
+====================================================================
+MILESTONE 1 — COMMUNITY, DATA ACQUISITION, AND LABEL TAXONOMY
+====================================================================
+Dataset : ChatGPT Reddit (~50K comments, Kaggle)
+Kaggle  : https://www.kaggle.com/datasets/armitaraz/chatgpt-reddit
+Goal    : Download raw data → explore → design 2–4 labels →
+          sample 200 balanced labeled examples → save final CSV
 
-Community: r/nba (Reddit NBA basketball discussion community)
------------------------------------------------------------------
-r/nba is one of Reddit's most active sports communities (~10M members), where
-users debate player rankings, game performances, team decisions, and the
-league's direction. The community self-polices discourse quality strongly —
-members distinguish between posts that make genuine arguments and posts that
-are emotional reactions or unsupported claims. This makes it an ideal community
-for a discourse-quality classifier: the distinctions are real and culturally
-meaningful inside the community.
 
-Label Taxonomy: 3 Labels
------------------------------------------------------------------
+====================================================================
+PHASE 1 — DOWNLOAD THE DATASET FROM KAGGLE
+====================================================================
 
-LABEL 1: analysis
-Definition: A post that makes a structured argument backed by statistics,
-historical comparisons, contextual data, or tactical/strategic reasoning.
-Evidence is specific and verifiable; the post reasons toward a conclusion
-rather than just asserting it.
+STEP 1: Install kagglehub (one-time setup)
+------------------------------------------
+  pip install kagglehub pandas
 
-Example 1:
-"Luka's efficiency on pull-up threes this postseason (.412 3P%) puts him in
-rare company — only Steph Curry and Dirk have posted higher rates in a single
-playoff run with 5+ attempts per game. His step-back geometry is fundamentally
-different: he releases at a higher apex, meaning defenders closing out get less
-contest window. This isn't just hot — it's reproducible."
+  kagglehub authenticates automatically if you have your Kaggle API
+  key configured.  If not, go to:
+    https://www.kaggle.com/settings/account  →  "Create New Token"
+  This downloads kaggle.json. Place it at:
+    Windows: C:\Users\<you>\.kaggle\kaggle.json
+    (or set env vars KAGGLE_USERNAME and KAGGLE_KEY)
 
-Example 2:
-"People are sleeping on how much the Celtics' switch-everything scheme depends
-on having a 7-footer who can guard guards. When Porzingis is off the floor,
-their defensive rating drops from 107 to 119. The system doesn't work without
-him — which is exactly why the Pacers targeted him with off-ball screens in Q4."
+STEP 2: Download with kagglehub
+---------------------------------
+  Run this in a Python script or Jupyter notebook:
 
-Borderline case for analysis:
-"Kawhi's career playoff TS% is higher than LeBron's. That has to count for
-something." — Cites a real stat but uses it to assert superiority without
-deeper context. → Classified as HOT_TAKE (stat is cherry-picked for effect,
-not as part of a reasoned argument. See decision rule below.)
+    import kagglehub
+    path = kagglehub.dataset_download("armitaraz/chatgpt-reddit")
+    print("Path to dataset files:", path)
 
----
+  kagglehub will print the local cache path where it saved the CSV.
+  Typical location:
+    C:\Users\<you>\.cache\kagglehub\datasets\armitaraz\chatgpt-reddit\...
 
-LABEL 2: hot_take
-Definition: A bold, confident opinion stated without supporting evidence, or
-with evidence that is cherry-picked or decorative rather than genuinely
-argumentative. The post asserts a strong claim; it does not build toward it.
+STEP 3: Load into a DataFrame and inspect
+------------------------------------------
+  import pandas as pd
 
-Example 1:
-"LeBron is the most overrated player in NBA history. His ring count only
-happened because he had elite help every single time. Jordan would have 10
-rings in LeBron's era."
+  # Replace <path> with the value printed by kagglehub above
+  df = pd.read_csv(r"<path>\chatgpt_reddit.csv")
 
-Example 2:
-"The NBA is soft now. Players take days off for 'load management' and nobody
-calls it what it is — they're just scared of competing. The 90s players would
-have laughed at this."
+  print(df.shape)           # expect ~50K rows
+  print(df.columns.tolist()) # comment_id, comment_parent_id,
+                              # comment_body, subreddit
+  print(df["subreddit"].value_counts())   # which 4 subreddits?
+  print(df["comment_body"].str.len().describe())  # text length stats
+  print(df.head(10))        # first look at real comments
 
-Borderline case for hot_take:
-"Tatum is better than Luka right now — he's on a championship team and Luka
-keeps losing in the first round." — Opinionated framing, points to a result as
-implicit evidence. → Classified as HOT_TAKE (the evidence is a win/loss record
-used rhetorically, not a reasoned performance argument).
 
----
+====================================================================
+PHASE 2 — EXPLORE RAW DATA AND DISCOVER LABEL CANDIDATES
+====================================================================
 
-LABEL 3: reaction
-Definition: An immediate emotional response to a specific, recent game event,
-play, or moment. Little or no argument — the post is expressing a feeling or
-sharing a sentiment about something that just happened. Often short.
+WHY explore before labeling:
+  Do NOT define labels from memory.  Read 30–40 actual comments first
+  to see what patterns the real data contains.  Labels that look clean
+  in your head often collapse when you read real posts.
 
-Example 1:
-"THAT DUNK BY ANT OMFG HE JUST PUT THE WHOLE LEAGUE ON NOTICE"
+STEP 4: Print a random sample of 40 comments
+----------------------------------------------
+  sample = df["comment_body"].dropna().sample(40, random_state=42)
+  for i, text in enumerate(sample, 1):
+      print(f"--- {i} ---")
+      print(text[:300])
+      print()
 
-Example 2:
-"Can't believe we let that lead slip. This team breaks my heart every single
-year. I'm done."
+  While reading, ask yourself:
+  - What makes some posts more substantive than others?
+  - What would a regular in this community recognize as a "good take"
+    vs. noise?
+  - Are there distinct modes (e.g., hype, criticism, practical tips,
+    genuine analysis)?
 
-Borderline case for reaction:
-"Steph just hit his 4th three of the half. At what point do teams stop leaving
-him open? This is inexcusable coaching." — Reacts to a live event but adds a
-light tactical critique. → Classified as REACTION (the comment is situational
-and emotional; the 'critique' is not developed into an argument).
+STEP 5: Check subreddit breakdown
+------------------------------------
+  For each of the 4 subreddits, print 10 comments:
 
----
+  for sub in df["subreddit"].unique():
+      print(f"\n=== r/{sub} ===")
+      subset = df[df["subreddit"] == sub]["comment_body"].dropna()
+      for txt in subset.sample(min(10, len(subset)), random_state=1):
+          print(txt[:200])
+          print("---")
 
-Edge Case Decision Rule: analysis vs. hot_take
-------------------------------------------------
-If a post provides specific, verifiable evidence that would support its claim
-even if you stripped out the opinion framing → label it ANALYSIS.
-If the evidence is vague, cherry-picked, or just enough to sound credible but
-the post doesn't reason through it → label it HOT_TAKE.
-When in doubt: if the post's main payload is the claim (not the reasoning),
-it's a HOT_TAKE.
+  Note: discourse style may vary by subreddit.  If one subreddit is
+  very different, you may want to sample proportionally from all 4.
 
-Edge Case Decision Rule: reaction vs. hot_take
-------------------------------------------------
-REACTION posts are anchored to a specific event that just happened (a game,
-a play, a trade announced moments ago). HOT_TAKE posts make general claims
-about players, teams, or the league that aren't tied to a single moment.
-If you could post it in a vacuum without referencing a specific event → HOT_TAKE.
-If it requires the context of "this just happened" to make sense → REACTION.
+STEP 6: Identify label candidates from what you observed
+----------------------------------------------------------
+  After reading 40+ real comments, write down 3–5 candidate labels
+  you noticed.  Common patterns in AI/ChatGPT Reddit discourse:
 
----
-Community Summary (for planning.md):
-r/nba is a text-heavy, opinion-rich community where discourse quality is
-culturally meaningful — members actively distinguish analysis from noise.
-The three-label taxonomy (analysis / hot_take / reaction) captures a
-distinction that r/nba participants recognize and care about: whether a post
-advances the conversation or merely expresses a feeling or a bold unsubstantiated
-claim. These labels are mutually exclusive (grounded in evidence and framing
-rather than topic) and cover at least 95% of subreddit posts cleanly.
+  CANDIDATE A — hype / uncritical praise
+    "ChatGPT will replace all programmers within 2 years."
+    "This is literally the most important technology in human history."
+    Bold positive claim, no evidence, no nuance.
+
+  CANDIDATE B — criticism / doom
+    "This thing is just a fancy autocomplete, it has no understanding."
+    "OpenAI is going to destroy society with this."
+    Bold negative claim, often exaggerated, no real evidence.
+
+  CANDIDATE C — practical / experience
+    "I've been using it to write unit tests — saves me 2 hours a day."
+    "Ask it to explain the code before asking it to fix it. Works much better."
+    Specific use case, personal observation, actionable.
+
+  CANDIDATE D — analysis / nuanced take
+    "The real limitation is context window + hallucination rate on
+    factual recall.  Until retrieval-augmented generation matures,
+    it's not reliable for research tasks."
+    Evidence-based, acknowledges tradeoffs, reasons through a position.
+
+  ► NOTE: After reading your actual sample, you may collapse A+B into
+    one "hot_take" label (positive or negative bold claim without
+    evidence) and keep C and D separate.  Or you may find the data
+    doesn't have enough analysis to justify that label.
+    Let the data drive the final label set.
+
+
+====================================================================
+PHASE 3 — DEFINE YOUR FINAL LABEL TAXONOMY (2–4 LABELS)
+====================================================================
+
+STEP 7: Finalize label definitions
+------------------------------------
+  For each label you keep, write:
+    1. One-sentence definition
+    2. Two clear example comments from the actual dataset
+    3. One borderline comment you are NOT sure about
+
+  TEMPLATE (fill in after Phase 2 exploration):
+
+  LABEL: hot_take
+  ---------------
+  Definition: A bold, confident opinion about ChatGPT stated without
+  supporting evidence — either extreme praise or extreme criticism.
+  The post asserts a strong claim but does not build toward it.
+
+  Example 1: [paste from real data]
+  Example 2: [paste from real data]
+  Borderline: [paste from real data — what makes you unsure?]
+
+  LABEL: experience
+  -----------------
+  Definition: A personal account of using ChatGPT for a specific task,
+  including what worked, what didn't, or a practical tip.  Grounded in
+  first-hand observation rather than a general claim about AI.
+
+  Example 1: [paste from real data]
+  Example 2: [paste from real data]
+  Borderline: [paste from real data]
+
+  LABEL: analysis
+  ---------------
+  Definition: A post that reasons through a position about ChatGPT's
+  capabilities or limitations using specific evidence, technical
+  context, or comparative reasoning.  The argument is constructed;
+  the conclusion is not merely asserted.
+
+  Example 1: [paste from real data]
+  Example 2: [paste from real data]
+  Borderline: [paste from real data]
+
+  (Optional LABEL: question / discussion — only add if a significant
+  fraction of comments are neutral clarifying questions that don't
+  fit the above three.)
+
+STEP 8: Check mutual exclusivity
+----------------------------------
+  Pick 10 random comments and try to assign exactly one label to each.
+  For every comment where you hesitate between two labels, write down:
+    - Which two labels you considered
+    - What rule you used to break the tie
+    - Whether that rule also works for the other 9 comments
+
+  If you cannot break ties consistently, one of two things is true:
+    A) Two labels overlap — merge them or sharpen the boundary
+    B) A new boundary concept is missing — add a decision rule
+
+  RED FLAGS that mean your labels need work:
+    - You assign two labels to the same comment more than 20% of the time
+    - One label gets 70%+ of your random sample (too dominant)
+    - You can't write the boundary rule in one sentence
+
+  MUTUAL EXCLUSIVITY TEST (run this mentally):
+    hot_take vs. experience: "Did the person try it themselves, or are
+      they making a claim about AI in general?"
+      → If personal use → experience.  If general claim → hot_take.
+
+    experience vs. analysis: "Is this just sharing what happened, or
+      is the person reasoning toward a conclusion about ChatGPT's
+      properties?"
+      → If just reporting → experience.  If arguing a point → analysis.
+
+    hot_take vs. analysis: "Would this post still hold up if you
+      stripped out the opinion framing and only kept the evidence?"
+      → If evidence stands alone → analysis.  If nothing left → hot_take.
+
+
+====================================================================
+PHASE 4 — SAMPLE 200 BALANCED LABELED EXAMPLES
+====================================================================
+
+STEP 9: Filter out unusable rows
+----------------------------------
+  # Drop nulls, very short comments (< 20 chars), and deleted posts
+  df_clean = df.dropna(subset=["comment_body"])
+  df_clean = df_clean[df_clean["comment_body"].str.len() >= 20]
+  df_clean = df_clean[~df_clean["comment_body"].isin(["[deleted]", "[removed]"])]
+  print(f"Usable rows: {len(df_clean)}")   # should still be 40K+
+
+STEP 10: Auto-label with keyword heuristics (first pass only)
+--------------------------------------------------------------
+  Use these heuristics to get a fast first-pass label.
+  ALL auto-labels must be manually reviewed in Step 11.
+
+  import re
+
+  def heuristic_label(text):
+      text_l = text.lower()
+
+      # Practical / experience signals
+      if re.search(r"\b(i (used|tried|asked|told|prompted|got|found)|"
+                   r"works (great|well|for me)|doesn't work|my workflow|"
+                   r"tip:|trick:|prompt:|use it for|saves me|"
+                   r"i've been using)\b", text_l):
+          return "experience"
+
+      # Analysis signals — specific technical or comparative reasoning
+      if re.search(r"\b(context window|hallucin|retrieval|token|"
+                   r"fine.?tun|gpt-[34]|compared to|benchmark|"
+                   r"accuracy|limitation|technically|because|"
+                   r"evidence|research shows|study|data)\b", text_l):
+          return "analysis"
+
+      # Hot take signals — bold claims, extreme praise or doom
+      if re.search(r"\b(will replace|already replaced|end of|"
+                   r"most (important|dangerous|overhyped|useless)|"
+                   r"just (autocomplete|a chatbot|hype)|"
+                   r"change everything|destroy|revolutionize|"
+                   r"not (real|actual) intelligence|agi|"
+                   r"overrated|overhyped|garbage|amazing|incredible|"
+                   r"best (thing|tool)|worst)\b", text_l):
+          return "hot_take"
+
+      return "REVIEW_ME"   # flag for manual review
+
+  df_clean = df_clean.copy()
+  df_clean["auto_label"] = df_clean["comment_body"].apply(heuristic_label)
+  print(df_clean["auto_label"].value_counts())
+
+STEP 11: Sample 200 comments — balanced across labels
+-------------------------------------------------------
+  Target: ~67 per label (if 3 labels).  If 4 labels, ~50 per label.
+
+  TARGET_PER_LABEL = 67   # adjust if you have 4 labels
+
+  sampled_parts = []
+  for lbl in ["hot_take", "experience", "analysis"]:
+      pool = df_clean[df_clean["auto_label"] == lbl]
+      n    = min(TARGET_PER_LABEL, len(pool))
+      sampled_parts.append(pool.sample(n, random_state=42))
+
+  # If any label is under-represented, also pull REVIEW_ME rows
+  review_pool = df_clean[df_clean["auto_label"] == "REVIEW_ME"]
+  sampled_parts.append(review_pool.sample(min(30, len(review_pool)),
+                                           random_state=42))
+
+  sampled = pd.concat(sampled_parts).drop_duplicates("comment_body")
+  sampled = sampled.sample(frac=1, random_state=42).reset_index(drop=True)
+  print(f"Total sampled: {len(sampled)}")
+
+STEP 12: Manually review and correct every label
+-------------------------------------------------
+  Open the sampled DataFrame.  For each row:
+    1. Read comment_body
+    2. Check whether auto_label is correct
+    3. If wrong, change it to the correct label
+    4. If unsure, add a note in the "notes" column
+
+  Fastest review workflow:
+    - Export to CSV, open in Excel/Google Sheets
+    - Add a "label" column (copy from auto_label to start)
+    - Correct labels manually, row by row
+    - Add a "notes" column for rows you flagged
+
+  Label distribution target:
+    Label         | Target | Acceptable range
+    --------------|--------|------------------
+    hot_take      |  67    | 55 – 80
+    experience    |  67    | 55 – 80
+    analysis      |  67    | 55 – 80
+
+  If a label stays under 55 after manual review:
+    → Go back to df_clean, pull more REVIEW_ME rows for that label
+    → Or pull from a different subreddit in the dataset
+
+
+====================================================================
+PHASE 5 — CREATE THE FINAL LABELED CSV
+====================================================================
+
+STEP 13: Build and save the final dataset
+------------------------------------------
+  After manual review is complete, save the final CSV:
+
+  final = sampled[["comment_body", "label", "notes"]].copy()
+  final = final.rename(columns={"comment_body": "text"})
+  final = final[final["label"].isin(["hot_take", "experience", "analysis"])]
+
+  # Final sanity check
+  print(final["label"].value_counts())
+  print(f"Total rows: {len(final)}")
+  assert len(final) >= 200, "Need at least 200 labeled examples"
+
+  final.to_csv("data/chatgpt_dataset.csv", index=False)
+  print("Saved → data/chatgpt_dataset.csv")
+
+  CSV column format:
+    text   — the comment text (comment_body from Kaggle)
+    label  — one of: hot_take | experience | analysis
+    notes  — optional annotation notes (blank = clean label)
+
+STEP 14: Spot-check mutual exclusivity one final time
+------------------------------------------------------
+  Take 10 random rows from the final CSV and ask yourself:
+    "Could this belong to a different label?"
+
+  For each YES, write down the rule you used to resolve it.
+  Add unresolved edge cases to the decision rules in Step 8.
+  If more than 3 of 10 are ambiguous → your labels still need work.
+
+
+====================================================================
+PHASE 6 — COMMUNITY DESCRIPTION AND LABEL SUMMARY
+====================================================================
+
+STEP 15: Write your 2–3 sentence community description
+--------------------------------------------------------
+  Template (fill in after exploration):
+
+  "The ChatGPT Reddit dataset draws from [N] subreddits where users
+  debate the capabilities, risks, and practical uses of ChatGPT and
+  related AI tools.  The discourse ranges from breathless hype and
+  doomsday predictions (hot_take) to firsthand usage tips and
+  workflows (experience) to technically grounded critiques and
+  comparisons (analysis).  These distinctions matter because they
+  separate posts that genuinely inform readers from posts that
+  generate engagement without adding understanding — a distinction
+  the communities themselves reinforce through upvotes and criticism
+  of 'AI doomer' or 'AI shill' posts."
+
+  → Paste the filled-in version into planning.md when done.
+
+
+====================================================================
+MILESTONE 1 CHECKLIST
+====================================================================
+[ ] kagglehub installed and Kaggle API key configured
+[ ] Dataset downloaded and loaded into DataFrame
+[ ] 40+ raw comments read before designing labels
+[ ] Label candidates identified from actual data patterns
+[ ] Final 2–4 labels defined with examples and borderline cases
+[ ] Mutual exclusivity decision rules written for each boundary
+[ ] 200+ comments sampled (balanced across labels)
+[ ] All labels manually reviewed and corrected
+[ ] Final CSV saved to data/chatgpt_dataset.csv
+[ ] Community description written (2–3 sentences)
+[ ] planning.md updated with new community + label definitions
+
+====================================================================
+SCRIPT REFERENCE
+====================================================================
+Phase 1–2  scripts/explore_kaggle.py   (explore raw data)
+Phase 3–5  scripts/build_dataset.py    (sample + save CSV)
+Phase 6    planning.md                 (community description)
+
+The existing scripts/collect_data.py targets r/nba RSS feeds and
+is no longer needed for this dataset.  Do not delete it — it shows
+the old approach for reference.
+====================================================================
