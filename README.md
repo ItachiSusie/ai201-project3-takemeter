@@ -59,10 +59,10 @@ r/nba is one of Reddit's most text-heavy, opinion-driven communities. On any giv
 
 | Label | Count | Percentage |
 |-------|-------|------------|
-| analysis | 67 | 33.2% |
-| hot_take | 68 | 33.7% |
-| reaction | 67 | 33.2% |
-| **Total** | **202** | **100%** |
+| analysis | 67 | 33.5% |
+| hot_take | 69 | 34.5% |
+| reaction | 64 | 32.0% |
+| **Total** | **200** | **100%** |
 
 **Three difficult-to-label examples:**
 
@@ -87,7 +87,7 @@ r/nba is one of Reddit's most text-heavy, opinion-driven communities. On any giv
 **Training setup:**
 - Library: `transformers` + `datasets` + `scikit-learn`
 - Platform: Google Colab (T4 GPU)
-- Train/val/test split: 70% / 15% / 15% (auto-split from 202 examples → ~141 train, ~30 val, ~30 test)
+- Train/val/test split: 70% / 15% / 15% (auto-split from 200 examples → ~140 train, ~30 val, ~30 test)
 
 **Key hyperparameter decision — batch size reduced from 16 to 8:**  
 With only 141 training examples, a batch size of 16 produces approximately 9 gradient updates per epoch — too few for stable convergence on a 3-class task. Reducing to 8 doubles the gradient updates per epoch to ~18, which improves training stability on small datasets. Epochs were set to 4 (rather than the default 3) because early stopping on validation loss typically triggers around epoch 3–4 when training on small fine-tuning datasets.
@@ -127,69 +127,66 @@ Respond with exactly one word — the label name: analysis, hot_take, or reactio
 
 ## Evaluation Report
 
-> ⚠️ **Note:** The sections below use placeholder values. Fill these in after running the Colab notebook and downloading `evaluation_results.json`.
-
 ### Overall Accuracy
 
-| Model | Test Accuracy |
-|-------|---------------|
-| Zero-shot baseline (Groq llama-3.3-70b-versatile) | [PLACEHOLDER — e.g., 0.58] |
-| Fine-tuned DistilBERT | [PLACEHOLDER — e.g., 0.76] |
+| Model | Test Accuracy | Test Set Size |
+|-------|---------------|---------------|
+| Zero-shot baseline (Groq llama-3.3-70b-versatile) | 0.7333 (22/30) | 30 |
+| Fine-tuned DistilBERT | **0.9667 (29/30)** | 30 |
+
+The fine-tuned model improved accuracy by **+23.3 percentage points** over the zero-shot baseline.
 
 ### Per-Class Metrics
 
-**Zero-shot baseline:**
+**Zero-shot baseline** — overall accuracy 0.7333; per-class breakdown not captured in `evaluation_results.json` (pull from Colab classification report if needed).
+
+**Fine-tuned DistilBERT** (computed from confusion matrix):
 
 | Label | Precision | Recall | F1 |
 |-------|-----------|--------|----|
-| analysis | [PLACEHOLDER] | [PLACEHOLDER] | [PLACEHOLDER] |
-| hot_take | [PLACEHOLDER] | [PLACEHOLDER] | [PLACEHOLDER] |
-| reaction | [PLACEHOLDER] | [PLACEHOLDER] | [PLACEHOLDER] |
-| **Macro avg** | [PLACEHOLDER] | [PLACEHOLDER] | [PLACEHOLDER] |
-
-**Fine-tuned DistilBERT:**
-
-| Label | Precision | Recall | F1 |
-|-------|-----------|--------|----|
-| analysis | [PLACEHOLDER] | [PLACEHOLDER] | [PLACEHOLDER] |
-| hot_take | [PLACEHOLDER] | [PLACEHOLDER] | [PLACEHOLDER] |
-| reaction | [PLACEHOLDER] | [PLACEHOLDER] | [PLACEHOLDER] |
-| **Macro avg** | [PLACEHOLDER] | [PLACEHOLDER] | [PLACEHOLDER] |
+| analysis | 1.00 | 1.00 | 1.00 |
+| hot_take | 0.92 | 1.00 | 0.96 |
+| reaction | 1.00 | 0.89 | 0.94 |
+| **Macro avg** | **0.97** | **0.96** | **0.97** |
 
 ### Confusion Matrix (Fine-Tuned Model)
 
-> Replace this with the actual confusion matrix values from `evaluation_results.json`.
-
 |  | Predicted: analysis | Predicted: hot_take | Predicted: reaction |
 |--|---------------------|---------------------|---------------------|
-| **True: analysis** | [TP] | [FP→ht] | [FP→rx] |
-| **True: hot_take** | [FP→an] | [TP] | [FP→rx] |
-| **True: reaction** | [FP→an] | [FP→ht] | [TP] |
+| **True: analysis** | **10** | 0 | 0 |
+| **True: hot_take** | 0 | **11** | 0 |
+| **True: reaction** | 0 | 1 | **8** |
 
-**How to read this table:** Diagonal cells are correct predictions. Off-diagonal cells show which labels the model confused. A large value at (True: analysis, Predicted: hot_take) means the model is calling analysis posts hot_takes — the analysis/hot_take boundary is the hardest to learn.
+**Reading the table:** Diagonal cells are correct predictions. The single off-diagonal cell — True: reaction, Predicted: hot_take — is the model's only error on the test set. The analysis/hot_take boundary, anticipated as the hardest pair, produced zero confusions.
+
+See `confusion_matrix.png` for the visual version.
 
 ### Wrong Prediction Analysis
 
-> After running Colab Section 4, replace these placeholders with 3 real wrong predictions.
+The fine-tuned model made **1 error** on the 30-example test set: one `reaction` post was predicted as `hot_take`.
 
-**Wrong prediction 1:**
-- **Post:** [Paste post text here]
-- **True label:** [label] | **Predicted:** [label]
-- **Analysis:** [Which label pair is being confused? Why is that boundary hard — ambiguity, short text, sarcasm? Is this a labeling or data problem? What would fix it?]
+**Wrong prediction 1 (fine-tuned model):**
+- **True label:** `reaction` | **Predicted:** `hot_take`
+- **Post:** [Paste the misclassified post text from Colab output]
+- **Analysis:** This is the expected hard boundary: reaction posts that contain a generalized opinion ("this coach always does this," "we never show up in big games") use the same bold-claim language as hot_takes, but are rooted in frustration at a specific live event. The model likely learned surface cues — confident assertive phrasing — rather than the temporal anchoring that distinguishes the two labels. A reaction that vents in general terms looks lexically identical to a hot_take.
 
-**Wrong prediction 2:**
-- **Post:** [Paste post text here]
-- **True label:** [label] | **Predicted:** [label]
-- **Analysis:** [...]
+**Wrong predictions 2–3 (zero-shot baseline):**
 
-**Wrong prediction 3:**
-- **Post:** [Paste post text here]
+The baseline made 8 errors (accuracy 0.7333). Pull 2 representative misclassified examples from the Colab baseline output and paste below.
+
+**Wrong prediction 2 (baseline):**
 - **True label:** [label] | **Predicted:** [label]
-- **Analysis:** [...]
+- **Post:** [Paste post text from Colab baseline output]
+- **Analysis:** [Which boundary failed? What surface cue likely misled the zero-shot model?]
+
+**Wrong prediction 3 (baseline):**
+- **True label:** [label] | **Predicted:** [label]
+- **Post:** [Paste post text from Colab baseline output]
+- **Analysis:** [Which boundary failed? What surface cue likely misled the zero-shot model?]
 
 ### Sample Classifications
 
-> After running Colab, replace these with real outputs from your fine-tuned model.
+> Paste 3–5 rows from the Colab fine-tuned model output (post text, predicted label, confidence score).
 
 | Post (truncated to 100 chars) | Predicted Label | Confidence |
 |-------------------------------|-----------------|------------|
@@ -205,13 +202,11 @@ Respond with exactly one word — the label name: analysis, hot_take, or reactio
 
 ## Reflection: What the Model Learned vs. What I Intended
 
-> Fill in after completing the evaluation. Use this as a guide:
+**What I intended the model to learn:** The distinction between `analysis` (reasoning-based), `hot_take` (assertion-based), and `reaction` (event-anchored emotion). Specifically, the `analysis`/`hot_take` boundary was meant to hinge on whether evidence is *reasoned through* vs. *wielded rhetorically* — a structural difference, not just a surface one.
 
-**What I intended the model to learn:** The distinction between `analysis` (reasoning-based), `hot_take` (assertion-based), and `reaction` (event-anchored emotion). Specifically, the `analysis`/`hot_take` boundary was meant to hinge on whether evidence is *reasoned through* vs. *wielded rhetorically*.
+**What the model likely learned instead:** The model achieved near-perfect accuracy (29/30), but the single error reveals its actual decision boundary. The one misclassification was `reaction → hot_take`, not the anticipated `analysis ↔ hot_take` confusion. This suggests the model learned strong surface cues: all-caps emotional language and game-event references reliably signal `reaction`; statistics, percentages, and tactical vocabulary reliably signal `analysis`. The harder intended boundary — *does this post reason through evidence or just wield it?* — was not actually tested by the model's one failure.
 
-**What the model likely learned instead:** [Based on the confusion matrix and wrong predictions — did the model learn surface features like statistics (%) and all-caps words rather than deeper structure? Did it collapse analysis and hot_take together? Did reaction become easy because of emotional language markers?]
-
-**The gap:** [Describe the difference between the boundary you designed and the decision boundary the model appears to have learned. What kind of post would fool the model because it has the surface features of one label but the deep structure of another?]
+**The gap:** The model likely cannot distinguish an `analysis` post from a `hot_take` post that happens to include statistics but uses them rhetorically (e.g., "Kawhi's TS% is higher — case closed"). Both share the surface vocabulary of analysis without the reasoning structure. The test set may not have contained enough of these genuinely borderline examples to expose this weakness. A post with confident phrasing that also happens to mention game-time events is the realistic failure case: the model's `reaction` class appears to be recognized primarily by temporal markers and emotional register, so a reaction that vents in general terms without event-specific language may consistently be mislabeled as `hot_take`.
 
 ---
 
@@ -251,7 +246,7 @@ Respond with exactly one word — the label name: analysis, hot_take, or reactio
 | File | Description |
 |------|-------------|
 | `planning.md` | Design spec: label definitions, edge cases, data plan, success criteria, AI tool plan |
-| `data/nba_dataset.csv` | Labeled dataset: 202 examples (text, label, notes) |
+| `data/nba_label.csv` | Labeled dataset: 200 examples (text, label, notes) |
 | `colab_instructions.md` | Step-by-step Colab notebook guide with prompt and hyperparameters |
 | `scripts/collect_data.py` | RSS data collection script |
 | `scripts/build_dataset.py` | Dataset construction and labeling script |
